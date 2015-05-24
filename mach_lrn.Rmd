@@ -1,0 +1,66 @@
+---
+title: "Practical_Machine_Learning"
+author: "Michael Pawlus"
+date: "Saturday, May 23, 2015"
+output: html_document
+---
+
+Introduction
+
+This write up looks at how to choose the best model for a particular dataset.  In this case, we are looking to identify the weight lifting move by studying participant movement.
+
+
+
+```{r}
+train <- read.csv("pml-training.csv")
+test <- read.csv("pml-testing.csv")
+```
+
+Then we need to remove those columns which are all NAs in test since we won't have data to make a prediction from these columns.  We will need to remove these from train as well.
+
+
+```{r}
+test <- test[,sapply(test, function(x) !all(is.na(x)))]
+colNames <- names(test)
+class(colNames)
+colNames <-colNames[1:59]
+colNames <- c(colNames,"classe")
+train <- train[,colNames]
+```
+
+Next, we will remove any columns with near zero variance
+
+```{r}
+nzv <- nearZeroVar(train) 
+train <- train[,-nzv]
+test <- test[,-nzv]
+```
+
+Then, finally run pre-processing to normalize the rest of the value
+
+```{r}
+modTrans <- preProcess(train[,-c(1,2,5,59)],method=c("center","scale"))
+train[,-c(1,2,5,59)] <-predict(modTrans, train[,-c(1,2,5,59)])
+test[,-c(1,2,5,59)] <-predict(modTrans, test[,-c(1,2,5,59)])
+```
+
+Now, the data is ready for modelling.  First, we will try a decision tree and then we will try random forests.  The reason we will cosider these two models is because we are predicting factors and these models are better at that while multiple regression models are better for numerical and propablistic prediction.
+
+```{r}
+set.seed(432)
+modSet <- trainControl(method="repeatedcv", number=10, repeats=3)
+modFit <- train(classe ~ ., data=train, trControl=modSet, method="rpart")
+modFit
+```
+
+In this model we tried using k-fold cross validation 
+
+Next we will look at random forests using just the default bootstrap cross-validation
+
+```{r}
+set.seed(718)
+modFitRF <- train(classe ~ ., data=train, method="rf")
+modFitRF
+```
+
+Random Forests provides an accuracy of _____ which is the most acurate model so this is the model I will choose.
